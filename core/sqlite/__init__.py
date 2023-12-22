@@ -2,7 +2,7 @@ import sqlite3
 from typing import Union
 import time
 import random
-from ..utils.helpers import generate_unique_5_digit_number
+
 
 class SQLITEDATABASE:
     def __init__(self, client: sqlite3.Cursor, table_name: str):
@@ -11,12 +11,14 @@ class SQLITEDATABASE:
 
     def insert(self, data: Union[dict, list], list_name: str = None):
         """Inserts data into table"""
+
         orginal_key_name = None
         tb_name = f"{list_name}_table" if list_name else self.table_name
         table_name = _id = None
-        for key, value in data.items():
-            if isinstance(value, dict):
-                table_name, _id = self.insert(value, key)
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    table_name, _id = self.insert(value, key)
         col_decide = ""
         for key, value in data.items():
             if isinstance(value, str):
@@ -34,12 +36,8 @@ class SQLITEDATABASE:
                 col_decide += f"other_table_{orginal_key_name} Varchar(9), "
         col_decide = col_decide[:-2]
         id_ = generate_unique_5_digit_number()
-        cmd = f"""CREATE TABLE IF NOT EXISTS {tb_name} (_id INT,{col_decide}"""
-        if list_name and (table_name or _id) is not None:
-            orginal_key_name = table_name.rsplit("_table", 1)[0]
-        if list_name and (table_name or _id) is not None:
-            orginal_key_name = table_name.rsplit("_table", 1)[0]
-            cmd += f", FOREIGN KEY ({orginal_key_name}) REFERENCES {table_name}(_id)"
+        cmd = f"""CREATE TABLE IF NOT EXISTS {tb_name} (_id INT,{col_decide})"""
+        self.client.execute(cmd)
         columns = ""
         for key in data.keys():
             if key == orginal_key_name:
@@ -62,14 +60,15 @@ class SQLITEDATABASE:
 
         self.client.execute(cmd)
         return (table_name or tb_name, id_)
-    
+
     def find(self, m_data: dict, tb_name=None):
         """Finds data in table"""
         tb_name = tb_name or self.table_name
         if m_data:
-            cmd = self._pre_find_(m_data, tb_name)
+            cmd = self.pre_search(m_data, tb_name)
         else:
             cmd = f"SELECT * FROM {tb_name}"
+
         self.client.execute(cmd)
         fetch_all = self.client.fetchall()
         self.client.execute(f"PRAGMA table_info({tb_name})")
@@ -88,8 +87,7 @@ class SQLITEDATABASE:
                 x_data[col] = n_data
         return to_return[0] if len(to_return) == 1 else to_return
 
-    # TODO Rename this here and in `find`
-    def _pre_find_(self, m_data, tb_name):
+    def pre_search(self, m_data, tb_name):
         columns = ''.join(
             f"{key}, "
             for key in m_data.keys()
@@ -109,3 +107,25 @@ class SQLITEDATABASE:
             if (values_ := values_[:-2])
             else f"SELECT * FROM {tb_name} WHERE {columns}"
         )
+
+def generate_unique_5_digit_number():
+    timestamp = int(time.time() * 1000)
+    random_suffix = random.randint(0, 99999)
+    return (timestamp % 100000) * 100000 + random_suffix
+
+
+_client = sqlite3.connect("test.db").cursor()
+client = SQLITEDATABASE(_client, "x_tble")
+client.insert({"helo": "hi", "test": {"x": "y"}})
+
+_client.execute("SELECT name FROM sqlite_master WHERE type='table';")
+tables = _client.fetchall()
+
+found_data = client.find({"helo": "hi", "test": {"x": "y"}})
+print(found_data)
+
+
+# another 
+client.insert({"helo": "bye", "test": {"x": "z"}})
+found_data = client.find({"helo": "bye", "test": {"x": "z"}})
+print(found_data)

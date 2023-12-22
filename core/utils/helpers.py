@@ -1,5 +1,6 @@
-import time
 import random
+import time
+
 
 def generate_unique_5_digit_number():
     timestamp = int(time.time() * 1000)

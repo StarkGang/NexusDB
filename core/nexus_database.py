@@ -1,8 +1,6 @@
 from typing import Any
-from core.nexus_collection import  NexusCollection
-from sqlite3 import Cursor
-import sqlalchemy
-from typing import Union
+
+from core.nexus_collection import NexusCollection
 
 
 class NexusDatabase:
@@ -16,6 +14,3 @@ class NexusDatabase:
         if self.mongo_db:
             mongo_collection = self.mongo_db[__name]
         return NexusCollection(mongo_collection, self.sqlite_db, self.sql_db)
-        
-
-    
